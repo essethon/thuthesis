@@ -1,22 +1,24 @@
 # Makefile for ThuThesis
 
-# Compiling method: xelatex/pdflatex/dvipdfmx
-METHOD = xelatex
+# Compiling method: latexmk/xelatex/pdflatex/dvipdfmx
+METHOD = latexmk
+# Set opts for latexmk if you use it
+LATEXMKOPTS = -xelatex
 # Basename of thesis
 THESISMAIN = main
 # Basename of shuji
 SHUJIMAIN = shuji
 
 ifeq ($(MAKE),)
-    override MAKE = make
+	override MAKE = make
 endif
 
 ifeq ($(TEXI2DVI),)
-    override TEXI2DVI = texi2dvi
+	override TEXI2DVI = texi2dvi
 endif
 
 PACKAGE=thuthesis
-SOURCES=$(PACKAGE).ins $(PACKAGE).dtx 
+SOURCES=$(PACKAGE).ins $(PACKAGE).dtx
 THESISCONTENTS=$(THESISMAIN).tex data/*.tex $(EPS)
 # NOTE: update this to reflect your local file types.
 EPS=$(wildcard figures/*.eps)
@@ -33,7 +35,7 @@ else
    SLASH = /
 endif
 
-.PHONY: all clean distclean dist thesis shuji doc cls
+.PHONY: all clean distclean dist thesis shuji doc cls FORCE_MAKE
 
 all: doc thesis shuji
 
@@ -64,6 +66,11 @@ $(PACKAGE).pdf: $(CLSFILES)
 	makeindex -s gglo.ist -o $(PACKAGE).gls $(PACKAGE).glo
 	pdflatex $(PACKAGE).dtx
 	pdflatex $(PACKAGE).dtx
+
+else ifeq ($(METHOD),latexmk)
+
+$(PACKAGE).pdf: $(CLSFILES) FORCE_MAKE
+	latexmk $(LATEXMKOPTS) $(PACKAGE).dtx
 
 else
 
@@ -106,6 +113,11 @@ $(THESISMAIN).bbl: $(BIBFILE)
 	-bibtex $(THESISMAIN)
 	$(RM) $(THESISMAIN).pdf
 
+else ifeq ($(METHOD),latexmk)
+
+$(THESISMAIN).pdf: $(CLSFILES) FORCE_MAKE
+	latexmk $(LATEXMKOPTS) $(THESISMAIN)
+
 else
 
 $(THESISMAIN).pdf: $(THESISMAIN).dvi
@@ -135,6 +147,11 @@ else ifeq ($(METHOD),pdflatex)
 $(SHUJIMAIN).pdf: $(CLSFILES) $(SHUJICONTENTS)
 	pdflatex $(SHUJIMAIN).tex
 
+else ifeq ($(METHOD),latexmk)
+
+$(SHUJIMAIN).pdf: $(CLSFILES) FORCE_MAKE
+	latexmk $(LATEXMKOPTS) $(SHUJIMAIN)
+
 else
 
 $(SHUJIMAIN).dvi: $(CLSFILES) $(SHUJICONTENTS)
@@ -146,39 +163,21 @@ $(SHUJIMAIN).pdf: $(SHUJIMAIN).dvi
 
 endif
 
-clean: 
-	-@$(RM) \
-		*~ \
-		*.aux \
-		*.bak \
-		*.bbl \
-		*.blg \
-		*.dvi \
-		*.glo \
-		*.gls \
-		*.idx \
-		*.ilg \
-		*.ind \
-		*.ist \
-		*.log \
-		*.out \
-		*.ps \
-		*.thm \
-		*.toc \
-		*.lof \
-		*.lot \
-		*.loe \
-		data$(SLASH)*.aux \
-		dtx-style.sty
+clean:
+	latexmk -c $(PACKAGE).dtx $(THESISMAIN) $(SHUJIMAIN)
+	-@$(RM) $(PACKAGE).dvi $(THESISMAIN).dvi $(SHUJIMAIN).dvi
+	-@$(RM) *~
 
-distclean: clean
+cleanall: clean
+	-@$(RM) $(PACKAGE).pdf $(THESISMAIN).pdf $(SHUJIMAIN).pdf
+
+distclean: cleanall
 	-@$(RM) $(CLSFILES)
-	-@$(RM) $(PACKAGE).pdf $(THESISMAIN).pdf $(SHUJI).pdf
 	-@$(RM) -r dist
 
 dist:
 	@if [ -z "$(VERSION)" ]; then \
-	    echo "Usage: make dist VERSION=<version#>"; \
+		echo "Usage: make dist VERSION=<version#>"; \
 	else \
-	    ./makedist.sh $(VERSION) UTF8; \
+		./makedist.sh $(VERSION); \
 	fi
